@@ -75,7 +75,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
         NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-agienschatbot}
-    # BACKEND_INTERNAL_URL — только внутренний адрес контейнера (не менять на публичный URL, иначе 502).
+    # BACKEND_INTERNAL_URL — только внутренний адрес контейнера (не localhost и не публичный URL, иначе 502).
     environment:
       - BACKEND_INTERNAL_URL=http://backend:3001
     ports:

@@ -83,15 +83,29 @@ CORS_ORIGINS=https://agiens-hackathon.online,https://www.agiens-hackathon.online
 
 **Важно:** в `docker-compose.yml` у сервиса `frontend` переменная **`BACKEND_INTERNAL_URL`** должна быть **`http://backend:3001`** (внутренний адрес контейнера), а не публичный URL. Её меняют только для локальной разработки вне Docker. Иначе Next.js не сможет проксировать `/api` к бэкенду и возможны 502.
 
-## Ошибка 502 Bad Gateway при открытии https://agiens-hackathon.online
+## Ошибка 502 Bad Gateway (и frontend, и backend)
 
-1. **Проверьте, что контейнер frontend запущен и не падает:**
+1. **Поднять все сервисы** (не только backend): nginx проксирует на frontend и backend, поэтому должны быть запущены оба:
    ```bash
-   docker compose ps
-   docker compose logs frontend --tail 50
+   docker compose up -d
    ```
 
-2. **Верните внутренний URL бэкенда** в `docker-compose.yml` для сервиса `frontend`:
+2. **Проверить, что контейнеры работают:**
+   ```bash
+   docker compose ps
+   ```
+   У `backend` и `frontend` должен быть статус `Up` (и при наличии healthcheck — `healthy`). Если есть `Exit` или `Restarting` — смотрите логи: `docker compose logs backend frontend --tail 80`.
+
+3. **Проверить с хоста** (до nginx):
+   ```bash
+   curl -s http://localhost:3001/health
+   curl -sI http://localhost:3000
+   ```
+   Если здесь уже пусто или connection refused — проблема в контейнерах, не в nginx.
+
+4. **В `.env` использовать знак равенства**, не двоеточие: `NEXT_PUBLIC_API_URL=https://...`, а не `NEXT_PUBLIC_API_URL:https://...`.
+
+5. **Вернуть внутренний URL бэкенда** в `docker-compose.yml` для сервиса `frontend`:
    ```yaml
    environment:
      - BACKEND_INTERNAL_URL=http://backend:3001
