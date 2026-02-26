@@ -5,6 +5,8 @@ import io
 import logging
 from typing import Optional
 
+import httpx
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,10 @@ def _client():
     settings = get_settings()
     if not settings.elevenlabs_api_key:
         return None
-    return ElevenLabs(api_key=settings.elevenlabs_api_key)
+    kwargs = {"api_key": settings.elevenlabs_api_key}
+    if not settings.elevenlabs_verify_ssl:
+        kwargs["httpx_client"] = httpx.Client(verify=False)
+    return ElevenLabs(**kwargs)
 
 
 def is_available() -> bool:
@@ -27,7 +32,10 @@ def _stt_sync(audio_bytes: bytes, filename: str, model_id: str) -> Optional[str]
     """Sync STT (run in thread). Prefer filename with .webm for browser recordings."""
     from elevenlabs.client import ElevenLabs
     settings = get_settings()
-    client = ElevenLabs(api_key=settings.elevenlabs_api_key)
+    kwargs = {"api_key": settings.elevenlabs_api_key}
+    if not settings.elevenlabs_verify_ssl:
+        kwargs["httpx_client"] = httpx.Client(verify=False)
+    client = ElevenLabs(**kwargs)
     if not audio_bytes or len(audio_bytes) < 100:
         logger.warning("STT: audio too short or empty (%s bytes)", len(audio_bytes) if audio_bytes else 0)
         return None
@@ -59,7 +67,10 @@ def _tts_sync(text: str, voice_id: str, model_id: str) -> Optional[bytes]:
     """Sync TTS (run in thread)."""
     from elevenlabs.client import ElevenLabs
     settings = get_settings()
-    client = ElevenLabs(api_key=settings.elevenlabs_api_key)
+    kwargs = {"api_key": settings.elevenlabs_api_key}
+    if not settings.elevenlabs_verify_ssl:
+        kwargs["httpx_client"] = httpx.Client(verify=False)
+    client = ElevenLabs(**kwargs)
     audio = client.text_to_speech.convert(
         voice_id=voice_id,
         text=text,
@@ -75,6 +86,21 @@ def _tts_sync(text: str, voice_id: str, model_id: str) -> Optional[bytes]:
     return None
 
 
+def _log_elevenlabs_error(method: str, e: Exception) -> None:
+    """Log ElevenLabs error; avoid traceback for known API restrictions (302/geo)."""
+    try:
+        from elevenlabs.core.api_error import ApiError
+        if isinstance(e, ApiError) and e.status_code == 302:
+            logger.warning(
+                "ElevenLabs %s: API returned 302 redirect. Access may be restricted in this region/country. See https://help.elevenlabs.io/hc/en-us/articles/22497891312401",
+                method,
+            )
+            return
+    except ImportError:
+        pass
+    logger.warning("ElevenLabs %s failed: %s", method, e, exc_info=True)
+
+
 async def speech_to_text(audio_bytes: bytes, filename: str = "audio.webm") -> Optional[str]:
     """Transcribe audio to text. Returns None if not configured or on error."""
     if not _client():
@@ -88,7 +114,7 @@ async def speech_to_text(audio_bytes: bytes, filename: str = "audio.webm") -> Op
             settings.elevenlabs_stt_model,
         )
     except Exception as e:
-        logger.warning("ElevenLabs STT failed: %s", e, exc_info=True)
+        _log_elevenlabs_error("STT", e)
         return None
 
 
@@ -104,7 +130,8 @@ async def text_to_speech(text: str) -> Optional[bytes]:
             settings.elevenlabs_voice_id,
             settings.elevenlabs_tts_model,
         )
-    except Exception:
+    except Exception as e:
+        _log_elevenlabs_error("TTS", e)
         return None
 
 

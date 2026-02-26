@@ -46,6 +46,7 @@ services:
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - ELEVENLABS_VERIFY_SSL=${ELEVENLABS_VERIFY_SSL:-true}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-agiens}:${POSTGRES_PASSWORD:-agiens}@postgres:5432/${POSTGRES_DB:-agiens}
       - REDIS_URL=redis://redis:6379/0
@@ -71,6 +72,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
         NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-agienschatbot}
+    # BACKEND_INTERNAL_URL — только внутренний адрес контейнера (не менять на публичный URL, иначе 502).
     environment:
       - BACKEND_INTERNAL_URL=http://backend:3001
     ports:

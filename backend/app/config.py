@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel (default)
     elevenlabs_tts_model: str = "eleven_multilingual_v2"
     elevenlabs_stt_model: str = "scribe_v2"
+    # Отключить проверку SSL к API (например за корп. прокси с самоподписанным сертификатом)
+    elevenlabs_verify_ssl: bool = True
 
     # MCP: Zapier (global fallback; per-account in DB)
     zapier_mcp_server_url: Optional[str] = None
