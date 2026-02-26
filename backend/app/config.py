@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     elevenlabs_stt_model: str = "scribe_v2"
     # Отключить проверку SSL к API (например за корп. прокси с самоподписанным сертификатом)
     elevenlabs_verify_ssl: bool = True
+    # Прокси для запросов к ElevenLabs (чтобы трафик шёл через VPN). Пример: http://127.0.0.1:1080 или socks5://127.0.0.1:1080
+    elevenlabs_http_proxy: Optional[str] = None
 
     # MCP: Zapier (global fallback; per-account in DB)
     zapier_mcp_server_url: Optional[str] = None

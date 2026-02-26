@@ -12,6 +12,15 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _httpx_client_kwargs() -> dict:
+    """Build httpx.Client kwargs for ElevenLabs (proxy, verify). Used so all requests go through VPN/proxy."""
+    settings = get_settings()
+    kwargs: dict = {"verify": settings.elevenlabs_verify_ssl}
+    if settings.elevenlabs_http_proxy:
+        kwargs["proxy"] = settings.elevenlabs_http_proxy
+    return kwargs
+
+
 def _client():
     """Lazy ElevenLabs client to avoid import at module load when key is missing."""
     from elevenlabs.client import ElevenLabs
@@ -19,8 +28,8 @@ def _client():
     if not settings.elevenlabs_api_key:
         return None
     kwargs = {"api_key": settings.elevenlabs_api_key}
-    if not settings.elevenlabs_verify_ssl:
-        kwargs["httpx_client"] = httpx.Client(verify=False)
+    if not settings.elevenlabs_verify_ssl or settings.elevenlabs_http_proxy:
+        kwargs["httpx_client"] = httpx.Client(**_httpx_client_kwargs())
     return ElevenLabs(**kwargs)
 
 
@@ -32,10 +41,10 @@ def _stt_sync(audio_bytes: bytes, filename: str, model_id: str) -> Optional[str]
     """Sync STT (run in thread). Prefer filename with .webm for browser recordings."""
     from elevenlabs.client import ElevenLabs
     settings = get_settings()
-    kwargs = {"api_key": settings.elevenlabs_api_key}
-    if not settings.elevenlabs_verify_ssl:
-        kwargs["httpx_client"] = httpx.Client(verify=False)
-    client = ElevenLabs(**kwargs)
+    client_kwargs = {"api_key": settings.elevenlabs_api_key}
+    if not settings.elevenlabs_verify_ssl or settings.elevenlabs_http_proxy:
+        client_kwargs["httpx_client"] = httpx.Client(**_httpx_client_kwargs())
+    client = ElevenLabs(**client_kwargs)
     if not audio_bytes or len(audio_bytes) < 100:
         logger.warning("STT: audio too short or empty (%s bytes)", len(audio_bytes) if audio_bytes else 0)
         return None
@@ -67,10 +76,10 @@ def _tts_sync(text: str, voice_id: str, model_id: str) -> Optional[bytes]:
     """Sync TTS (run in thread)."""
     from elevenlabs.client import ElevenLabs
     settings = get_settings()
-    kwargs = {"api_key": settings.elevenlabs_api_key}
-    if not settings.elevenlabs_verify_ssl:
-        kwargs["httpx_client"] = httpx.Client(verify=False)
-    client = ElevenLabs(**kwargs)
+    client_kwargs = {"api_key": settings.elevenlabs_api_key}
+    if not settings.elevenlabs_verify_ssl or settings.elevenlabs_http_proxy:
+        client_kwargs["httpx_client"] = httpx.Client(**_httpx_client_kwargs())
+    client = ElevenLabs(**client_kwargs)
     audio = client.text_to_speech.convert(
         voice_id=voice_id,
         text=text,

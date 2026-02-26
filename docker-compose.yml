@@ -43,10 +43,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - ELEVENLABS_VERIFY_SSL=${ELEVENLABS_VERIFY_SSL:-true}
+      - ELEVENLABS_HTTP_PROXY=${ELEVENLABS_HTTP_PROXY:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-agiens}:${POSTGRES_PASSWORD:-agiens}@postgres:5432/${POSTGRES_DB:-agiens}
       - REDIS_URL=redis://redis:6379/0
