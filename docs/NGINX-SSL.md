@@ -5,6 +5,16 @@
 
 Сертификаты: бесплатный SSL от Let's Encrypt (certbot).
 
+## Ошибка «pull rate limit» Docker Hub
+
+Если при `docker compose up -d` появляется *You have reached your unauthenticated pull rate limit*:
+
+1. Зарегистрируйтесь на [Docker Hub](https://hub.docker.com) (бесплатно).
+2. На сервере выполните: `docker login` и введите логин/пароль.
+3. Повторите: `docker compose up -d`.
+
+После входа лимит выше (200 образов за 6 часов для бесплатного аккаунта).
+
 ## Требования
 
 - Домен agiens-hackathon.online и поддомен server.agiens-hackathon.online должны указывать на IP сервера (A-записи).
