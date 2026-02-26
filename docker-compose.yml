@@ -1,0 +1,120 @@
+# Agiens: backend (FastAPI) + frontend (Next.js) + PostgreSQL + Redis
+# Run: docker compose up --build
+# Frontend: http://localhost:3000  Backend API: http://localhost:3001
+# PostgreSQL credentials: set in .env (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB).
+# If you change them, remove the volume first: docker compose down -v
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agiens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agiens}
+      POSTGRES_DB: ${POSTGRES_DB:-agiens}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-agiens} -d ${POSTGRES_DB:-agiens}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-agiens}:${POSTGRES_PASSWORD:-agiens}@postgres:5432/${POSTGRES_DB:-agiens}
+      - REDIS_URL=redis://redis:6379/0
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # Пустой NEXT_PUBLIC_API_URL = запросы на тот же origin (proxy в next.config). Нужно для ngrok (HTTPS).
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-agienschatbot}
+    environment:
+      - BACKEND_INTERNAL_URL=http://backend:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Nginx: agiens-hackathon.online → frontend, server.agiens-hackathon.online → backend, HTTPS (Let's Encrypt)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - certbot_letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+
+  # Optional: Telegram bot (set TELEGRAM_BOT_TOKEN in .env)
+  telegram-bot:
+    build:
+      context: ./bots/telegram
+      dockerfile: Dockerfile
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - BACKEND_URL=http://backend:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: "no"
+
+  # Certbot: для ручного запуска (первый выпуск и продление). Пример: docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d agiens-hackathon.online -d server.agiens-hackathon.online --email your@email.com --agree-tos --no-eff-email
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - certbot_letsencrypt:/etc/letsencrypt
+
+volumes:
+  postgres_data:
+  redis_data:
+  certbot_webroot:
+  certbot_letsencrypt:

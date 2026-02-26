@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: hsl(220 20% 7%);
+  --color-foreground: hsl(210 20% 92%);
+  --color-card: hsl(220 18% 10%);
+  --color-card-foreground: hsl(210 20% 92%);
+  --color-popover: hsl(220 18% 12%);
+  --color-popover-foreground: hsl(210 20% 92%);
+  --color-primary: hsl(175 80% 50%);
+  --color-primary-foreground: hsl(220 20% 7%);
+  --color-secondary: hsl(220 16% 16%);
+  --color-secondary-foreground: hsl(210 20% 85%);
+  --color-muted: hsl(220 14% 14%);
+  --color-muted-foreground: hsl(215 12% 55%);
+  --color-accent: hsl(265 70% 60%);
+  --color-accent-foreground: hsl(210 20% 95%);
+  --color-destructive: hsl(0 72% 55%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(220 14% 18%);
+  --color-input: hsl(220 14% 18%);
+  --color-ring: hsl(175 80% 50%);
+  --radius-lg: 0.75rem;
+  --radius-md: calc(0.75rem - 2px);
+  --radius-sm: calc(0.75rem - 4px);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-smoothing: antialiased;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+.glass-panel {
+  background: hsl(220 18% 12% / 0.6);
+  backdrop-filter: blur(24px);
+  border: 1px solid hsl(220 14% 18% / 0.5);
+}
+
+.text-gradient {
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, var(--color-primary), var(--color-accent));
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(215 12% 55% / 0.2);
+  border-radius: 9999px;
+}
