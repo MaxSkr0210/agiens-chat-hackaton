@@ -1,6 +1,6 @@
 export interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: Date;
   model?: string;
@@ -10,7 +10,6 @@ export interface Channel {
   id: string;
   name: string;
   icon: string;
-  unread: number;
 }
 
 export interface LLMModel {

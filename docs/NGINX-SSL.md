@@ -112,13 +112,34 @@ CORS_ORIGINS=https://agiens-hackathon.online,https://www.agiens-hackathon.online
    ```
    Не используйте `https://server.agiens-hackathon.online` для `BACKEND_INTERNAL_URL` — nginx и фронт общаются с бэкендом по внутренней сети по HTTP.
 
-3. **Публичный URL API для браузера** задаётся только в `NEXT_PUBLIC_API_URL` (build args), например:
-   ```yaml
-   args:
-     NEXT_PUBLIC_API_URL: https://server.agiens-hackathon.online
+6. **Публичный URL API для браузера** задаётся только в `NEXT_PUBLIC_API_URL` (build args), например в `.env`: `NEXT_PUBLIC_API_URL=https://server.agiens-hackathon.online`.
+
+7. После правок: `docker compose up -d frontend` и при необходимости `docker compose restart nginx`.
+
+## Только frontend 502 (backend открывается)
+
+1. **Убедиться, что контейнер frontend запущен:**
+   ```bash
+   docker compose ps
+   ```
+   Если `frontend` в статусе `Exit` или нет в списке — поднять: `docker compose up -d frontend`.
+
+2. **Пересобрать frontend** (если образ битый или не собирался):
+   ```bash
+   docker compose build --no-cache frontend && docker compose up -d frontend
    ```
 
-4. После правок: `docker compose up -d frontend` и при необходимости `docker compose restart nginx`.
+3. **Проверить ответ с хоста:**
+   ```bash
+   curl -sI http://localhost:3000
+   ```
+   Ожидается `HTTP/1.1 200` или `307`. Если `Connection refused` — контейнер frontend не слушает порт 3000 (перезапуск или смотреть логи: `docker compose logs frontend --tail 100`).
+
+4. **Проверить из другого контейнера** (доступность frontend по имени в сети Docker):
+   ```bash
+   docker compose exec backend curl -sI http://frontend:3000
+   ```
+   Должен вернуться HTTP-заголовок. Если таймаут или connection refused — frontend не в той же сети или не слушает.
 
 ## Локальная разработка без nginx
 

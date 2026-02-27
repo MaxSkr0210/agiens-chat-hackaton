@@ -127,7 +127,9 @@ def _tts_sync(text: str, voice_id: str, model_id: str) -> Optional[bytes]:
 
 
 def _log_elevenlabs_error(method: str, e: Exception) -> None:
-    """Log ElevenLabs error; avoid traceback for known API restrictions (302/geo)."""
+    """Log ElevenLabs error; avoid traceback for known API restrictions (302/geo) and proxy errors."""
+    err_msg = str(e).lower()
+    # 302 = geo restriction from ElevenLabs
     try:
         from elevenlabs.core.api_error import ApiError
         if isinstance(e, ApiError) and e.status_code == 302:
@@ -138,6 +140,13 @@ def _log_elevenlabs_error(method: str, e: Exception) -> None:
             return
     except ImportError:
         pass
+    # Proxy errors (Privoxy → SOCKS/xray)
+    if "proxy" in err_msg or "forwarding failure" in err_msg or "too many open" in err_msg:
+        logger.warning(
+            "ElevenLabs %s: proxy error (%s). Check Privoxy and xray on the host: sudo systemctl status privoxy; ps aux | grep xray",
+            method, e,
+        )
+        return
     logger.warning("ElevenLabs %s failed: %s", method, e, exc_info=True)
 
 

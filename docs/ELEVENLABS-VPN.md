@@ -127,3 +127,19 @@ docker compose logs backend -f
 После этого запросы к ElevenLabs из бэкенда идут через прокси на хосте → через VPN → в интернет.
 
 Если в логах бэкенда появляется **503 Too many open connections** от прокси — в коде уже используется один общий HTTP-клиент для всех запросов к ElevenLabs; перезапустите backend (`docker compose up -d backend`) и при необходимости перезапустите Privoxy на хосте (`sudo systemctl restart privoxy`).
+
+Если после запуска xray через прокси по-прежнему приходит **503 Too many open connections** — увеличьте лимит соединений Privoxy и перезапустите его:
+
+```bash
+# В конфиг Privoxy добавить (или увеличить): не более 256–512
+grep -q '^max-client-connections' /etc/privoxy/config || echo 'max-client-connections 256' | sudo tee -a /etc/privoxy/config
+# Если строка уже есть — вручную отредактировать: sudo nano /etc/privoxy/config
+sudo systemctl restart privoxy
+```
+
+Затем снова проверить: `curl -x http://127.0.0.1:8118 -sI https://api.elevenlabs.io`
+
+Если появляется **503 Forwarding failure** — Privoxy не может передать запрос в SOCKS (xray). Проверьте на хосте:
+- **xray запущен:** `ps aux | grep xray`; при необходимости перезапустите: `nohup xray run -c ~/vless-reality-vision.json > ~/xray.log 2>&1 &`
+- **Privoxy смотрит на правильный порт SOCKS** в `/etc/privoxy/config`: `forward-socks5 / 127.0.0.1:10808 .` (порт 10808 как в вашем xray)
+- Перезапуск цепочки: `sudo systemctl restart privoxy`, затем `docker compose restart backend`
