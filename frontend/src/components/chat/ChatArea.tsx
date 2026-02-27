@@ -1,20 +1,50 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Send, Mic, MicOff, Paperclip, Sparkles, Volume2, Pause, Square, Pencil, Link2 } from 'lucide-react';
-import type { Message, LLMModel } from '@/types/chat';
-import { ModelSelector } from './ModelSelector';
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  Send,
+  Mic,
+  MicOff,
+  Paperclip,
+  Sparkles,
+  Volume2,
+  Pause,
+  Square,
+  Pencil,
+  Link2,
+} from "lucide-react";
+import type { Message, LLMModel } from "@/types/chat";
+import { ModelSelector } from "./ModelSelector";
 
 /** Models aligned with backend (default: openrouter/auto) */
 const OPENROUTER_MODELS: LLMModel[] = [
-  { id: 'openrouter/auto', name: 'OpenRouter Auto', provider: 'OpenRouter', badge: '🟢' },
-  { id: 'openrouter/free', name: 'OpenRouter Free', provider: 'OpenRouter', badge: '🟢' },
-  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', provider: 'Meta', badge: '🟠' },
-  { id: 'google/gemma-3-4b-it:free', name: 'Gemma 3 4B', provider: 'Google', badge: '🔵' },
-  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 24B', provider: 'Mistral', badge: '🟣' },
+  {
+    id: "openrouter/auto",
+    name: "OpenRouter Auto",
+    provider: "OpenRouter",
+    badge: "🟢",
+  },
+  {
+    id: "openrouter/free",
+    name: "OpenRouter Free",
+    provider: "OpenRouter",
+    badge: "🟢",
+  },
+  {
+    id: "google/gemini-3.1-pro-preview-customtools",
+    name: "google/gemini-3.1-pro-preview",
+    provider: "Google",
+    badge: "🟠",
+  },
+  {
+    id: "openai/gpt-5.2-pro",
+    name: "OpenAI GPT-5.2-Pro",
+    provider: "OpenAI",
+    badge: "🔵",
+  },
 ];
 
 interface ChatAreaProps {
@@ -22,28 +52,58 @@ interface ChatAreaProps {
   messages: { id: string; role: string; content: string; createdAt: string }[];
   modelId: string;
   isLoading: boolean;
-  account?: { id: string; channel: string; externalId: string; zapierMcpServerUrl: string | null };
-  onSendMessage: (message: string, modelId: string, opts?: { signal?: AbortSignal; withVoice?: boolean }) => Promise<{ content: string; audioBase64?: string } | undefined>;
-  onSendVoice?: (chatId: string, audioBlob: Blob, modelId: string) => Promise<{ content: string; audioBase64: string }>;
+  account?: {
+    id: string;
+    channel: string;
+    externalId: string;
+    zapierMcpServerUrl: string | null;
+  };
+  onSendMessage: (
+    message: string,
+    modelId: string,
+    opts?: { signal?: AbortSignal; withVoice?: boolean },
+  ) => Promise<{ content: string; audioBase64?: string } | undefined>;
+  onSendVoice?: (
+    chatId: string,
+    audioBlob: Blob,
+    modelId: string,
+  ) => Promise<{ content: string; audioBase64: string }>;
   onModelChange?: (modelId: string) => void;
   onSaveMcp?: (serverUrl: string, secret: string) => Promise<void>;
   onInvalidateChat?: () => void;
 }
 
-export function ChatArea({ chatId, messages, modelId, isLoading, account, onSendMessage, onSendVoice, onModelChange, onSaveMcp, onInvalidateChat }: ChatAreaProps) {
-  const [input, setInput] = useState('');
+export function ChatArea({
+  chatId,
+  messages,
+  modelId,
+  isLoading,
+  account,
+  onSendMessage,
+  onSendVoice,
+  onModelChange,
+  onSaveMcp,
+  onInvalidateChat,
+}: ChatAreaProps) {
+  const [input, setInput] = useState("");
   const [replyWithVoice, setReplyWithVoice] = useState(false);
-  const [mcpUrl, setMcpUrl] = useState('');
-  const [mcpSecret, setMcpSecret] = useState('');
+  const [mcpUrl, setMcpUrl] = useState("");
+  const [mcpSecret, setMcpSecret] = useState("");
   const [mcpSaving, setMcpSaving] = useState(false);
   const [mcpSaved, setMcpSaved] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSendingVoice, setIsSendingVoice] = useState(false);
-  const [optimisticUserMessage, setOptimisticUserMessage] = useState<string | null>(null);
+  const [optimisticUserMessage, setOptimisticUserMessage] = useState<
+    string | null
+  >(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [voiceAudioByMessageId, setVoiceAudioByMessageId] = useState<Record<string, string>>({});
-  const [pendingVoiceAudioUrl, setPendingVoiceAudioUrl] = useState<string | null>(null);
+  const [voiceAudioByMessageId, setVoiceAudioByMessageId] = useState<
+    Record<string, string>
+  >({});
+  const [pendingVoiceAudioUrl, setPendingVoiceAudioUrl] = useState<
+    string | null
+  >(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [playError, setPlayError] = useState<string | null>(null);
   const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -53,20 +113,24 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
   const chunksRef = useRef<Blob[]>([]);
   const modelIdRef = useRef(modelId);
   modelIdRef.current = modelId;
-  const selectedModel = OPENROUTER_MODELS.find((m) => m.id === modelId) ?? OPENROUTER_MODELS[0];
+  const selectedModel =
+    OPENROUTER_MODELS.find((m) => m.id === modelId) ?? OPENROUTER_MODELS[0];
 
   const messageList: Message[] = messages.map((m) => ({
     id: m.id,
-    role: m.role as 'user' | 'assistant' | 'system',
+    role: m.role as "user" | "assistant" | "system",
     content: m.content,
     timestamp: new Date(m.createdAt),
-    model: m.role === 'assistant' ? modelId : undefined,
+    model: m.role === "assistant" ? modelId : undefined,
   }));
-  const lastAssistantId = [...messageList].reverse().find((m) => m.role === 'assistant')?.id;
+  const lastAssistantId = [...messageList]
+    .reverse()
+    .find((m) => m.role === "assistant")?.id;
   const prevLastAssistantIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (account?.zapierMcpServerUrl != null) setMcpUrl(account.zapierMcpServerUrl);
+    if (account?.zapierMcpServerUrl != null)
+      setMcpUrl(account.zapierMcpServerUrl);
   }, [account?.zapierMcpServerUrl]);
 
   const handleSaveMcp = async () => {
@@ -86,7 +150,7 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
   };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageList.length]);
 
   useEffect(() => {
@@ -96,7 +160,8 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
   }, [playError]);
 
   useEffect(() => {
-    if (!pendingVoiceAudioUrl && lastAssistantId) prevLastAssistantIdRef.current = lastAssistantId;
+    if (!pendingVoiceAudioUrl && lastAssistantId)
+      prevLastAssistantIdRef.current = lastAssistantId;
   }, [pendingVoiceAudioUrl, lastAssistantId]);
 
   useEffect(() => {
@@ -106,7 +171,10 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
       prevLastAssistantIdRef.current !== lastAssistantId &&
       !voiceAudioByMessageId[lastAssistantId]
     ) {
-      setVoiceAudioByMessageId((prev) => ({ ...prev, [lastAssistantId]: pendingVoiceAudioUrl }));
+      setVoiceAudioByMessageId((prev) => ({
+        ...prev,
+        [lastAssistantId]: pendingVoiceAudioUrl,
+      }));
       setPendingVoiceAudioUrl(null);
       prevLastAssistantIdRef.current = lastAssistantId;
     }
@@ -122,7 +190,9 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
         .getUserMedia({ audio: true })
         .then((stream) => {
           streamRef.current = stream;
-          const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+          const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : "audio/webm";
           const recorder = new MediaRecorder(stream);
           recorderRef.current = recorder;
           recorder.ondataavailable = (e) => {
@@ -138,18 +208,24 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
               return;
             }
             try {
-              const result = await onSendVoice(chatId, blob, modelIdRef.current);
+              const result = await onSendVoice(
+                chatId,
+                blob,
+                modelIdRef.current,
+              );
               if (voiceAudioRef.current) {
                 voiceAudioRef.current.pause();
                 voiceAudioRef.current = null;
               }
               setPlayingMessageId(null);
               if (result.audioBase64?.length) {
-                setPendingVoiceAudioUrl(`data:audio/mp3;base64,${result.audioBase64}`);
+                setPendingVoiceAudioUrl(
+                  `data:audio/mp3;base64,${result.audioBase64}`,
+                );
               }
               setPlayingMessageId(null);
             } catch (err) {
-              console.error('Voice send failed:', err);
+              console.error("Voice send failed:", err);
             } finally {
               setIsSendingVoice(false);
               setIsListening(false);
@@ -158,11 +234,11 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
           recorder.start(100);
         })
         .catch((err) => {
-          console.error('Microphone access failed:', err);
+          console.error("Microphone access failed:", err);
           setIsListening(false);
         });
     } else {
-      if (recorderRef.current?.state === 'recording') {
+      if (recorderRef.current?.state === "recording") {
         setIsSendingVoice(true);
         recorderRef.current.stop();
       }
@@ -178,7 +254,7 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
     const controller = new AbortController();
     abortControllerRef.current = controller;
     setOptimisticUserMessage(text);
-    setInput('');
+    setInput("");
     setIsSending(true);
     try {
       const res = await onSendMessage(text, selectedModel.id, {
@@ -189,7 +265,7 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
         setPendingVoiceAudioUrl(`data:audio/mp3;base64,${res.audioBase64}`);
       }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') throw err;
+      if ((err as Error).name !== "AbortError") throw err;
     } finally {
       setOptimisticUserMessage(null);
       setIsSending(false);
@@ -224,8 +300,8 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
       voiceAudioRef.current.pause();
       voiceAudioRef.current = null;
     }
-    if (!url || !url.includes(',')) {
-      setPlayError('Нет аудио для воспроизведения');
+    if (!url || !url.includes(",")) {
+      setPlayError("Нет аудио для воспроизведения");
       return;
     }
     const audio = new Audio(url);
@@ -235,27 +311,27 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
       voiceAudioRef.current = null;
     };
     audio.onerror = () => {
-      setPlayError('Ошибка загрузки аудио');
+      setPlayError("Ошибка загрузки аудио");
       setPlayingMessageId(null);
       voiceAudioRef.current = null;
     };
     setPlayingMessageId(messageId);
-    audio
-      .play()
-      .catch((e) => {
-        console.warn('Play failed:', e);
-        setPlayError('Воспроизведение заблокировано браузером (разрешите звук на сайте)');
-        setPlayingMessageId(null);
-        voiceAudioRef.current = null;
-      });
+    audio.play().catch((e) => {
+      console.warn("Play failed:", e);
+      setPlayError(
+        "Воспроизведение заблокировано браузером (разрешите звук на сайте)",
+      );
+      setPlayingMessageId(null);
+      voiceAudioRef.current = null;
+    });
   };
 
   const displayMessages: Message[] = optimisticUserMessage
     ? [
         ...messageList,
         {
-          id: 'optimistic',
-          role: 'user' as const,
+          id: "optimistic",
+          role: "user" as const,
           content: optimisticUserMessage,
           timestamp: new Date(),
           model: undefined,
@@ -297,41 +373,80 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'glass-panel rounded-bl-md'
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "glass-panel rounded-bl-md"
                   }`}
                 >
-                  {msg.model && msg.role === 'assistant' && (
-                    <span className="text-[10px] text-primary font-medium block mb-1">{msg.model}</span>
+                  {msg.model && msg.role === "assistant" && (
+                    <span className="text-[10px] text-primary font-medium block mb-1">
+                      {msg.model}
+                    </span>
                   )}
                   <div className="chat-markdown">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
-                        ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
-                        ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
-                        li: ({ children }: { children?: React.ReactNode }) => <li className="leading-relaxed">{children}</li>,
-                        code: ({ className, children, ...props }: { className?: string; children?: React.ReactNode }) => {
-                          const isBlock = className?.includes('language-');
+                        p: ({ children }: { children?: React.ReactNode }) => (
+                          <p className="mb-2 last:mb-0">{children}</p>
+                        ),
+                        strong: ({
+                          children,
+                        }: {
+                          children?: React.ReactNode;
+                        }) => (
+                          <strong className="font-semibold">{children}</strong>
+                        ),
+                        ul: ({ children }: { children?: React.ReactNode }) => (
+                          <ul className="list-disc list-inside mb-2 space-y-0.5">
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children }: { children?: React.ReactNode }) => (
+                          <ol className="list-decimal list-inside mb-2 space-y-0.5">
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children }: { children?: React.ReactNode }) => (
+                          <li className="leading-relaxed">{children}</li>
+                        ),
+                        code: ({
+                          className,
+                          children,
+                          ...props
+                        }: {
+                          className?: string;
+                          children?: React.ReactNode;
+                        }) => {
+                          const isBlock = className?.includes("language-");
                           return isBlock ? (
-                            <code className={`block p-2 rounded bg-black/10 text-xs overflow-x-auto ${className ?? ''}`} {...props}>
+                            <code
+                              className={`block p-2 rounded bg-black/10 text-xs overflow-x-auto ${className ?? ""}`}
+                              {...props}
+                            >
                               {children}
                             </code>
                           ) : (
-                            <code className="px-1 py-0.5 rounded bg-black/10 text-xs" {...props}>
+                            <code
+                              className="px-1 py-0.5 rounded bg-black/10 text-xs"
+                              {...props}
+                            >
                               {children}
                             </code>
                           );
                         },
-                        pre: ({ children }: { children?: React.ReactNode }) => <pre className="mb-2 overflow-x-auto">{children}</pre>,
-                        blockquote: ({ children }: { children?: React.ReactNode }) => (
+                        pre: ({ children }: { children?: React.ReactNode }) => (
+                          <pre className="mb-2 overflow-x-auto">{children}</pre>
+                        ),
+                        blockquote: ({
+                          children,
+                        }: {
+                          children?: React.ReactNode;
+                        }) => (
                           <blockquote className="border-l-2 border-primary/30 pl-3 my-2 text-muted-foreground">
                             {children}
                           </blockquote>
@@ -341,33 +456,42 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
                       {msg.content}
                     </ReactMarkdown>
                   </div>
-                  {msg.role === 'assistant' && voiceAudioByMessageId[msg.id] && (
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleVoicePlayback(msg.id, voiceAudioByMessageId[msg.id])}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        {playingMessageId === msg.id ? (
-                          <>
-                            <Pause className="w-3.5 h-3.5" />
-                            Пауза
-                          </>
-                        ) : (
-                          <>
-                            <Volume2 className="w-3.5 h-3.5" />
-                            Озвучить
-                          </>
+                  {msg.role === "assistant" &&
+                    voiceAudioByMessageId[msg.id] && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleVoicePlayback(
+                              msg.id,
+                              voiceAudioByMessageId[msg.id],
+                            )
+                          }
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          {playingMessageId === msg.id ? (
+                            <>
+                              <Pause className="w-3.5 h-3.5" />
+                              Пауза
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3.5 h-3.5" />
+                              Озвучить
+                            </>
+                          )}
+                        </button>
+                        {playError && (
+                          <p
+                            className="mt-1 text-[10px] text-amber-600"
+                            role="alert"
+                          >
+                            {playError}
+                          </p>
                         )}
-                      </button>
-                      {playError && (
-                        <p className="mt-1 text-[10px] text-amber-600" role="alert">
-                          {playError}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {msg.id === 'optimistic' && isSending && (
+                      </div>
+                    )}
+                  {msg.id === "optimistic" && isSending && (
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         type="button"
@@ -388,7 +512,10 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
                     </div>
                   )}
                   <span className="block text-[10px] mt-1.5 opacity-50">
-                    {msg.timestamp.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                    {msg.timestamp.toLocaleTimeString("ru", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               </motion.div>
@@ -396,7 +523,11 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
           </AnimatePresence>
 
           {isSendingVoice && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-1.5 px-4 py-3">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex gap-1.5 px-4 py-3"
+            >
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" />
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow [animation-delay:0.3s]" />
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow [animation-delay:0.6s]" />
@@ -434,28 +565,39 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
                 disabled={mcpSaving || !mcpUrl.trim()}
                 className="rounded-lg bg-primary/15 text-primary hover:bg-primary/25 px-3 py-2 text-sm font-medium disabled:opacity-50 transition-colors"
               >
-                {mcpSaving ? 'Сохранение…' : mcpSaved ? 'Сохранено' : 'Сохранить'}
+                {mcpSaving
+                  ? "Сохранение…"
+                  : mcpSaved
+                    ? "Сохранено"
+                    : "Сохранить"}
               </button>
             </div>
             {account.zapierMcpServerUrl && (
               <p className="text-[10px] text-muted-foreground">
-                Подключено: {account.zapierMcpServerUrl.length > 50 ? `${account.zapierMcpServerUrl.slice(0, 50)}…` : account.zapierMcpServerUrl}
+                Подключено:{" "}
+                {account.zapierMcpServerUrl.length > 50
+                  ? `${account.zapierMcpServerUrl.slice(0, 50)}…`
+                  : account.zapierMcpServerUrl}
               </p>
             )}
           </div>
         ) : (
           <p className="text-[10px] text-muted-foreground">
-            Войдите через Telegram в сайдбаре, чтобы настроить Zapier для всех чатов.
+            Войдите через Telegram в сайдбаре, чтобы настроить Zapier для всех
+            чатов.
           </p>
         )}
         <div className="flex items-center gap-2 glass-panel rounded-xl px-3 py-2">
-          <button type="button" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
+          <button
+            type="button"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+          >
             <Paperclip className="w-4 h-4" />
           </button>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Введите сообщение..."
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             disabled={isSending}
@@ -463,9 +605,15 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
           <button
             type="button"
             onClick={() => setReplyWithVoice((v) => !v)}
-            title={replyWithVoice ? 'Ответ голосом (TTS) включён' : 'Ответить голосом (TTS)'}
+            title={
+              replyWithVoice
+                ? "Ответ голосом (TTS) включён"
+                : "Ответить голосом (TTS)"
+            }
             className={`p-1.5 rounded-lg transition-colors ${
-              replyWithVoice ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+              replyWithVoice
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
             }`}
           >
             <Volume2 className="w-4 h-4" />
@@ -474,9 +622,17 @@ export function ChatArea({ chatId, messages, modelId, isLoading, account, onSend
             type="button"
             onClick={() => onSendVoice && setIsListening(!isListening)}
             disabled={!onSendVoice || isSendingVoice}
-            title={onSendVoice ? (isListening ? 'Остановить запись' : 'Голосовое сообщение (ElevenLabs)') : 'Голос недоступен'}
+            title={
+              onSendVoice
+                ? isListening
+                  ? "Остановить запись"
+                  : "Голосовое сообщение (ElevenLabs)"
+                : "Голос недоступен"
+            }
             className={`p-1.5 rounded-lg transition-colors ${
-              isListening ? 'bg-destructive/20 text-destructive' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+              isListening
+                ? "bg-destructive/20 text-destructive"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
             } disabled:opacity-50`}
           >
             {isSendingVoice ? (
