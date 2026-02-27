@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   MessageSquare,
   Bot,
   Settings,
-  Mic,
-  Zap,
-  Ticket,
   Headphones,
   LogOut,
 } from "lucide-react";
+import { TelegramLoginButton } from "@advanceddev/telegram-login-react";
 import type { Channel } from "@/types/chat";
 
 const channels: Channel[] = [
@@ -21,6 +18,16 @@ const channels: Channel[] = [
 
 const TELEGRAM_BOT_USERNAME =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "agienschatbot";
+
+export type TelegramAuthUser = {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+};
 
 interface SidebarProps {
   activeChannel: string;
@@ -35,6 +42,7 @@ interface SidebarProps {
   };
   authError?: string | null;
   onLogout?: () => void;
+  onTelegramAuth?: (user: TelegramAuthUser) => void;
 }
 
 const navItems = [
@@ -51,27 +59,8 @@ export function Sidebar({
   account,
   authError,
   onLogout,
+  onTelegramAuth,
 }: SidebarProps) {
-  const telegramWidgetRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (account || !telegramWidgetRef.current) return;
-    const container = telegramWidgetRef.current;
-    if (container.querySelector("script[data-telegram-login]")) return;
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
-    script.setAttribute("data-size", "medium");
-    // Колбэк объявлен в app/page.tsx и вешается на window.handleTelegramAuth при монтировании страницы
-    script.setAttribute("data-onauth", "handleTelegramAuth");
-    script.setAttribute("data-request-access", "write");
-    script.async = true;
-    container.innerHTML = "";
-    container.appendChild(script);
-    return () => {
-      container.innerHTML = "";
-    };
-  }, [account]);
 
   return (
     <div className="w-64 h-full flex flex-col glass-panel border-r border-border/50">
@@ -168,10 +157,18 @@ export function Sidebar({
                 {authError}
               </p>
             )}
-            <div
-              ref={telegramWidgetRef}
-              className="min-h-[44px] w-full flex justify-center [&>iframe]:!max-w-full"
-            />
+            {onTelegramAuth && (
+              <div className="w-full flex justify-center">
+                <TelegramLoginButton
+                  botUsername={TELEGRAM_BOT_USERNAME}
+                  onAuthCallback={onTelegramAuth}
+                  requestAccess="write"
+                  size="medium"
+                  lang="ru"
+                  className="[&>iframe]:!max-w-full"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sidebar } from "@/components/chat/Sidebar";
+import { Sidebar, type TelegramAuthUser } from "@/components/chat/Sidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { RightPanel } from "@/components/chat/RightPanel";
 import { ConnectTelegramCard } from "@/components/chat/ConnectChannelCard";
@@ -120,15 +120,7 @@ export default function HomePage() {
   );
 
   const handleTelegramAuth = useCallback(
-    async (user: {
-      id: number;
-      first_name?: string;
-      last_name?: string;
-      username?: string;
-      photo_url?: string;
-      auth_date: number;
-      hash: string;
-    }) => {
+    async (user: TelegramAuthUser) => {
       setAuthError(null);
       try {
         const res = await api.auth.telegramLogin(user);
@@ -151,28 +143,6 @@ export default function HomePage() {
     [queryClient],
   );
 
-  const handleTelegramAuthRef = useRef(handleTelegramAuth);
-
-  // Виджет Telegram ищет window.handleTelegramAuth по имени при вызове. Вешаем один раз и не снимаем,
-  // иначе после cleanup (в т.ч. Strict Mode) колбэк пропадёт и авторизация не сработает.
-  useEffect(() => {
-    handleTelegramAuthRef.current = handleTelegramAuth;
-    type TelegramUser = {
-      id: number;
-      first_name?: string;
-      last_name?: string;
-      username?: string;
-      photo_url?: string;
-      auth_date: number;
-      hash: string;
-    };
-    (
-      window as unknown as { handleTelegramAuth?: (u: TelegramUser) => void }
-    ).handleTelegramAuth = (u: TelegramUser) => {
-      void handleTelegramAuthRef.current(u);
-    };
-  }, [handleTelegramAuth]);
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       <Sidebar
@@ -182,6 +152,7 @@ export default function HomePage() {
         onTabChange={setActiveTab}
         account={account ?? undefined}
         authError={authError}
+        onTelegramAuth={handleTelegramAuth}
         onLogout={() => {
           setAuthToken(null);
           setToken(null);
