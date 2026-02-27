@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import type { Channel } from "@/types/chat";
 
-const channels: Channel[] = [{ id: "telegram", name: "Telegram", icon: "✈️" }];
+const channels: Channel[] = [
+  { id: "web", name: "Веб-чат", icon: "💬" },
+  { id: "telegram", name: "Telegram", icon: "✈️" },
+];
 
 const TELEGRAM_BOT_USERNAME =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "agienschatbot";
