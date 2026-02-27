@@ -34,15 +34,15 @@ const OPENROUTER_MODELS: LLMModel[] = [
     badge: "🟢",
   },
   {
-    id: "google/gemini-3.1-pro-preview-customtools",
-    name: "google/gemini-3.1-pro-preview",
-    provider: "Google",
+    id: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+    name: "Llama Nemotron Embed VL 1B",
+    provider: "NVIDIA",
     badge: "🟠",
   },
   {
-    id: "openai/gpt-5.2-pro",
-    name: "OpenAI GPT-5.2-Pro",
-    provider: "OpenAI",
+    id: "sourceful/riverflow-v2-pro",
+    name: "riverflow",
+    provider: "Sourceful",
     badge: "🔵",
   },
 ];
