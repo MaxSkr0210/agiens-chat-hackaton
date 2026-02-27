@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     zapier_mcp_server_url: Optional[str] = None
     zapier_mcp_secret: Optional[str] = None
 
+    # MCP: Playwright (local npx @playwright/mcp; requires Node.js + npx)
+    playwright_mcp_enabled: bool = False
+
     # Telegram bot (for widget verification and bot)
     telegram_bot_token: Optional[str] = None
 

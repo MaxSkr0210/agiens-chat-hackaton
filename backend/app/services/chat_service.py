@@ -4,6 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.base import ChatMessage
 from app.llm.registry import get_llm_registry
+from app.mcp.playwright_client import (
+    PLAYWRIGHT_TOOL_PREFIX,
+    call_playwright_tool,
+    get_playwright_tools,
+    is_playwright_mcp_available,
+)
 from app.mcp.zapier_client import call_zapier_tool, get_zapier_tools, is_zapier_mcp_configured
 from app.storage.repositories import (
     account_get_by_channel,
@@ -72,6 +78,9 @@ async def generate_reply(
     tools: list[dict] = []
     if is_zapier_mcp_configured(mcp_url, mcp_secret):
         tools = await get_zapier_tools(mcp_url, mcp_secret)
+    if is_playwright_mcp_available():
+        playwright_tools = await get_playwright_tools()
+        tools = tools + playwright_tools
 
     for _ in range(MAX_TOOL_ROUNDS):
         response = await provider.chat(
@@ -99,7 +108,10 @@ async def generate_reply(
                 args = json.loads(args_str) if isinstance(args_str, str) else args_str
             except json.JSONDecodeError:
                 args = {}
-            result = await call_zapier_tool(name, args, mcp_url, mcp_secret)
+            if name.startswith(PLAYWRIGHT_TOOL_PREFIX):
+                result = await call_playwright_tool(name, args)
+            else:
+                result = await call_zapier_tool(name, args, mcp_url, mcp_secret)
             call_id = (tc or {}).get("id") or ""
             messages.append(
                 ChatMessage(role="tool", content=result, tool_call_id=call_id)

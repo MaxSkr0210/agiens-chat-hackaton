@@ -166,7 +166,9 @@ export default function HomePage() {
       auth_date: number;
       hash: string;
     };
-    (window as unknown as { handleTelegramAuth?: (u: TelegramUser) => void }).handleTelegramAuth = (u: TelegramUser) => {
+    (
+      window as unknown as { handleTelegramAuth?: (u: TelegramUser) => void }
+    ).handleTelegramAuth = (u: TelegramUser) => {
       void handleTelegramAuthRef.current(u);
     };
   }, [handleTelegramAuth]);

@@ -7,7 +7,7 @@
 
 ## Ошибка «pull rate limit» Docker Hub
 
-Если при `docker compose up -d` появляется *You have reached your unauthenticated pull rate limit*:
+Если при `docker compose up -d` появляется _You have reached your unauthenticated pull rate limit_:
 
 1. Зарегистрируйтесь на [Docker Hub](https://hub.docker.com) (бесплатно).
 2. На сервере выполните: `docker login` и введите логин/пароль.
@@ -51,6 +51,7 @@
    ```
 
 После этого:
+
 - https://agiens-hackathon.online — фронтенд
 - https://server.agiens-hackathon.online — API бэкенда
 
@@ -86,30 +87,37 @@ CORS_ORIGINS=https://agiens-hackathon.online,https://www.agiens-hackathon.online
 ## Ошибка 502 Bad Gateway (и frontend, и backend)
 
 1. **Поднять все сервисы** (не только backend): nginx проксирует на frontend и backend, поэтому должны быть запущены оба:
+
    ```bash
    docker compose up -d
    ```
 
 2. **Проверить, что контейнеры работают:**
+
    ```bash
    docker compose ps
    ```
+
    У `backend` и `frontend` должен быть статус `Up` (и при наличии healthcheck — `healthy`). Если есть `Exit` или `Restarting` — смотрите логи: `docker compose logs backend frontend --tail 80`.
 
 3. **Проверить с хоста** (до nginx):
+
    ```bash
    curl -s http://localhost:3001/health
    curl -sI http://localhost:3000
    ```
+
    Если здесь уже пусто или connection refused — проблема в контейнерах, не в nginx.
 
 4. **В `.env` использовать знак равенства**, не двоеточие: `NEXT_PUBLIC_API_URL=https://...`, а не `NEXT_PUBLIC_API_URL:https://...`.
 
 5. **Вернуть внутренний URL бэкенда** в `docker-compose.yml` для сервиса `frontend`:
+
    ```yaml
    environment:
      - BACKEND_INTERNAL_URL=http://backend:3001
    ```
+
    Не используйте `https://server.agiens-hackathon.online` для `BACKEND_INTERNAL_URL` — nginx и фронт общаются с бэкендом по внутренней сети по HTTP.
 
 6. **Публичный URL API для браузера** задаётся только в `NEXT_PUBLIC_API_URL` (build args), например в `.env`: `NEXT_PUBLIC_API_URL=https://server.agiens-hackathon.online`.
@@ -119,20 +127,25 @@ CORS_ORIGINS=https://agiens-hackathon.online,https://www.agiens-hackathon.online
 ## Только frontend 502 (backend открывается)
 
 1. **Убедиться, что контейнер frontend запущен:**
+
    ```bash
    docker compose ps
    ```
+
    Если `frontend` в статусе `Exit` или нет в списке — поднять: `docker compose up -d frontend`.
 
 2. **Пересобрать frontend** (если образ битый или не собирался):
+
    ```bash
    docker compose build --no-cache frontend && docker compose up -d frontend
    ```
 
 3. **Проверить ответ с хоста:**
+
    ```bash
    curl -sI http://localhost:3000
    ```
+
    Ожидается `HTTP/1.1 200` или `307`. Если `Connection refused` — контейнер frontend не слушает порт 3000 (перезапуск или смотреть логи: `docker compose logs frontend --tail 100`).
 
 4. **Проверить из другого контейнера** (доступность frontend по имени в сети Docker):
