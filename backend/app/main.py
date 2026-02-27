@@ -81,4 +81,9 @@ app.include_router(voice_temp.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    from app.mcp.playwright_client import is_playwright_mcp_available
+    return {
+        "status": "ok",
+        "playwright_mcp_enabled": get_settings().playwright_mcp_enabled,
+        "playwright_mcp_available": is_playwright_mcp_available(),
+    }

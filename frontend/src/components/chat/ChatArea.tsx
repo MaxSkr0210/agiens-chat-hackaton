@@ -67,6 +67,7 @@ interface ChatAreaProps {
     chatId: string,
     audioBlob: Blob,
     modelId: string,
+    withVoice?: boolean,
   ) => Promise<{ content: string; audioBase64: string }>;
   onModelChange?: (modelId: string) => void;
   onSaveMcp?: (serverUrl: string, secret: string) => Promise<void>;
@@ -211,7 +212,8 @@ export function ChatArea({
               const result = await onSendVoice(
                 chatId,
                 blob,
-                modelIdRef.current,
+                modelIdRef.current ?? "openrouter/auto",
+                replyWithVoice,
               );
               if (voiceAudioRef.current) {
                 voiceAudioRef.current.pause();
@@ -245,7 +247,7 @@ export function ChatArea({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-  }, [isListening, chatId, onSendVoice]);
+  }, [isListening, chatId, onSendVoice, replyWithVoice]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -580,6 +582,18 @@ export function ChatArea({
                   : account.zapierMcpServerUrl}
               </p>
             )}
+            <p className="text-[10px] text-muted-foreground">
+              URL и секрет берите с{" "}
+              <a
+                href="https://mcp.zapier.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                mcp.zapier.com
+              </a>
+              . После сохранения просто пишите в чате — модель сама вызовет нужные инструменты (Drive, Sheets и т.д.).
+            </p>
           </div>
         ) : (
           <p className="text-[10px] text-muted-foreground">

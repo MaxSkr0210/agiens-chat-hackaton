@@ -82,8 +82,18 @@ export default function HomePage() {
   );
 
   const handleSendVoice = useCallback(
-    async (chatId: string, audioBlob: Blob, modelId: string) => {
-      const result = await api.chats.sendVoice(chatId, audioBlob, modelId);
+    async (
+      chatId: string,
+      audioBlob: Blob,
+      modelId: string,
+      withVoice: boolean = true,
+    ) => {
+      const result = await api.chats.sendVoice(
+        chatId,
+        audioBlob,
+        modelId,
+        withVoice,
+      );
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       return result;

@@ -190,8 +190,9 @@ async def send_voice(
     session: AsyncSession = Depends(get_db),
     audio: UploadFile = File(...),
     modelId: str | None = Form(None),
+    withVoice: bool = Form(True),
 ):
-    """Accept audio upload → ElevenLabs STT → LLM → ElevenLabs TTS; return content + audioBase64."""
+    """Accept audio upload → ElevenLabs STT → LLM; optionally ElevenLabs TTS. withVoice: when True (default), return TTS for the reply (как при включённой кнопке «Ответить голосом»)."""
     from app.voice.elevenlabs_client import speech_to_text, text_to_speech_base64
 
     raw = await audio.read()
@@ -220,7 +221,9 @@ async def send_voice(
         await chat_set_model(session, chat_id, modelId)
     content = await generate_reply(session, chat_id, user_text, modelId)
     await message_add(session, chat_id, "assistant", content)
-    audio_base64 = await text_to_speech_base64(content) or ""
+    audio_base64 = ""
+    if withVoice:
+        audio_base64 = await text_to_speech_base64(content) or ""
     return {"content": content, "audioBase64": audio_base64}
 
 

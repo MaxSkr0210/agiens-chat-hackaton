@@ -209,10 +209,12 @@ export const api = {
       id: string,
       audioBlob: Blob,
       modelId?: string,
+      withVoice: boolean = true,
     ): Promise<SendVoiceResponse> => {
       const form = new FormData();
       form.append("audio", audioBlob, "audio.webm");
       if (modelId) form.append("modelId", modelId);
+      form.append("withVoice", String(withVoice));
       const res = await fetch(`${API_URL}/api/chats/${id}/send-voice`, {
         method: "POST",
         body: form,
